@@ -178,6 +178,7 @@ impl FiringActiveAgent for NeuronModel {
 
 impl NeuronModel {
     fn fire(&mut self, refrac_begin: Time, dt: Time) {
+        // println!("LIF fire! i_e: {}", self.i_e.get::<n_A>());
         let refrac_end = refrac_begin + self.rounded_tau_refrac(dt);
         self.v = self.v_reset;
         self.firing_history.push(RefracDuration::new(refrac_begin, refrac_end));
@@ -227,7 +228,7 @@ impl NeuronModel {
             ).for_each(|s| {
                 if s.t >= self.last_refrac_end() {
                     buff.push(s);
-                    println!("LIF get signal! i_e: {}", self.i_e.get::<n_A>());    
+                    // println!("LIF get signal! i_e: {}", self.i_e.get::<n_A>());    
                 } else if s.t > self.last_refrac_begin() {
                     void.push(s);
                 } else {
@@ -260,7 +261,6 @@ impl NeuronModel {
     }
 
     fn generate(&self, firing_t: Time) {
-        println!("LIF fire! i_e: {}", self.i_e.get::<n_A>());
         self.out_dirac_v.feedforward( PreSynDiracV {
             v: self.gen_dirac_v,
             t: firing_t

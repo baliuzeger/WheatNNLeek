@@ -1,3 +1,4 @@
+use std::time::{Instant};
 use std::sync::{Mutex, Weak};
 use std::collections::HashMap;
 // use crate::utils::random_sleep;
@@ -52,8 +53,13 @@ impl Supervisor {
     }
     
     pub fn run(&mut self, mode: RunMode, duration: Time) {
+
         let total_steps = (duration / self.time_resolution).value as usize;
 
+        println!("Total steps: {}.", total_steps);
+        let now = Instant::now(); // for knowing the simulation time.
+        println!("Total time at begin of Supervisor: {}", now.elapsed().as_millis());
+        
         for (_, pp) in &self.consecutive_populations {
             pp.upgrade().unwrap().lock().unwrap().config_mode(mode);
         }
@@ -90,9 +96,13 @@ impl Supervisor {
         let running_silent_populations = self.running_silent_populations();
         let running_passive_populations = self.running_passive_populations();
         let mut fired_populations = Vec::new();
-        loop {
 
+        println!("Total time after supervisor initialization: {}", now.elapsed().as_millis());
+        
+        loop {
+            // println!("Total time of supervisor looping: {}", now.elapsed().as_millis());
             if counter >= total_steps {
+
                 for r_pp in &running_consecutive_populations {
                     r_pp.confirm.send(Broadcast::Exit).unwrap();
                 }
@@ -105,6 +115,9 @@ impl Supervisor {
                 for r_pp in &running_passive_populations {
                     r_pp.confirm.send(Broadcast::Exit).unwrap();
                 }
+
+                println!("Total time after running: {}", now.elapsed().as_millis());
+                
                 for r_pp in running_consecutive_populations {
                     r_pp.instance.join().expect("consecutive population join error!");
                 }
@@ -123,6 +136,9 @@ impl Supervisor {
                 // random_sleep();
                 // println!("count: {}.", counter);
                 fired_populations.clear();
+
+                let now1 = Instant::now(); // for knowing the simulation time.
+                
                 for r_pp in &running_consecutive_populations {
                     r_pp.confirm.send(Broadcast::Evolve).unwrap();
                 }
@@ -133,14 +149,20 @@ impl Supervisor {
                     r_pp.confirm.send(Broadcast::Evolve).unwrap();
                 }
 
+                println!("Total for supervisor sending Broadcast: {}", now1.elapsed().as_millis());
+                
                 for r_pp in &running_consecutive_populations {
                     r_pp.report.recv().unwrap();
                 }
+                
                 for r_pp in &running_firing_populations {
                     if let Fired::Y = r_pp.report.recv().unwrap() {
                         fired_populations.push((r_pp.confirm.clone(), r_pp.report.clone()));
                     }
                 }
+
+                println!("Total for supervisor recv report: {}", now1.elapsed().as_millis());
+                
                 for r_pp in &running_silent_populations {
                     r_pp.report.recv().unwrap();
                 }
@@ -166,6 +188,8 @@ impl Supervisor {
                 counter += 1;
             }
         }
+
+
         
         for (_, pp) in &self.consecutive_populations {
             pp.upgrade().unwrap().lock().unwrap().config_mode(RunMode::Idle);
@@ -181,6 +205,8 @@ impl Supervisor {
         }
 
         self.start_time += total_steps as f64 * self.time_resolution;
+
+        println!("Total time at supervisor run end: {}", now.elapsed().as_millis());
     }
 
     fn running_consecutive_populations(&self) -> Vec<ActiveRunningSet<()>> {

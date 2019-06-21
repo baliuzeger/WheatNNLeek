@@ -1,3 +1,4 @@
+use std::time::{Duration, Instant};
 use std::sync::{Arc};
 use wheatnnleek::{
     Time, m_S,
@@ -8,7 +9,7 @@ use wheatnnleek::{
     supervisor::Supervisor,
     populations::{SimpleFiringPopulation, SimplePassivePopulation, HoldAgents},
     agents::{
-        neurons::{ParamsLIF},
+        neurons::{ParamsLIF, LIF},
         synapses::{SynapseFlag, ParamsSynapseDiracV},
     },
     
@@ -20,7 +21,7 @@ fn main() {
 
     // build population for LIF.
     let name_pp_lif = String::from("LIF Population");
-    let pp_lif = SimpleFiringPopulation::new();
+    let pp_lif = SimpleFiringPopulation::<LIF>::new();
     sp0.add_firing(
         name_pp_lif.clone(),
         Arc::downgrade(&pp_lif)
@@ -39,8 +40,11 @@ fn main() {
         gen_dirac_v: Voltage::new::<m_V>(1.4),
     };
 
-    pp_lif.lock().unwrap().add(params_lif_auto.build());
+//    pp_lif.lock().unwrap().add(params_lif_auto.build());
 
+    // for testing simulation time with more neurons.
+    (0..2000).for_each(|_| pp_lif.lock().unwrap().add(params_lif_auto.build()));
+    
     // buil non-automatic-firing LIF.
     let params_lif_non_auto = ParamsLIF {
         v_rest: Voltage::new::<m_V>(14.5),
@@ -54,15 +58,15 @@ fn main() {
         gen_dirac_v: Voltage::new::<m_V>(1.4),
     };
 
-    pp_lif.lock().unwrap().add(params_lif_non_auto.build());
+    // pp_lif.lock().unwrap().add(params_lif_non_auto.build());
 
     // build Synapse-Dirac-Delta-V
     let name_pp_syn = String::from("SynapseDiracV Population");
-    let pp_syn = SimplePassivePopulation::new();
-    sp0.add_passive(
-        name_pp_syn.clone(),
-        Arc::downgrade(&pp_syn)
-    );
+    // let pp_syn = SimplePassivePopulation::new();
+    // sp0.add_passive(
+    //     name_pp_syn.clone(),
+    //     Arc::downgrade(&pp_syn)
+    // );
 
     // build Synapse-Dirac-Delta-V
     let params_syn = ParamsSynapseDiracV {
@@ -77,22 +81,24 @@ fn main() {
         synapse_flag: SynapseFlag::STDP, // decide use STDP or Static.
     };
 
-    // n1 -> n2
-    let n1 = pp_lif.lock().unwrap().agent_by_id(0);
-    let n2 = pp_lif.lock().unwrap().agent_by_id(1);
-    pp_syn.lock().unwrap().add(params_syn.build_to_active(n1, n2));
+    // // n1 -> n2
+    // let n1 = pp_lif.lock().unwrap().agent_by_id(0);
+    // let n2 = pp_lif.lock().unwrap().agent_by_id(1);
+    // pp_syn.lock().unwrap().add(params_syn.build_to_active(n1, n2));
 
-    // n2 -> n1
-    let n1 = pp_lif.lock().unwrap().agent_by_id(0);
-    let n2 = pp_lif.lock().unwrap().agent_by_id(1);
-    pp_syn.lock().unwrap().add(params_syn.build_to_active(n2, n1));
+    // // n2 -> n1
+    // let n1 = pp_lif.lock().unwrap().agent_by_id(0);
+    // let n2 = pp_lif.lock().unwrap().agent_by_id(1);
+    // pp_syn.lock().unwrap().add(params_syn.build_to_active(n2, n1));
     
-    pp_syn.lock().unwrap().agent_by_id(0).lock().unwrap().print_w();
-    pp_syn.lock().unwrap().agent_by_id(1).lock().unwrap().print_w();
+    // pp_syn.lock().unwrap().agent_by_id(0).lock().unwrap().print_w();
+    // pp_syn.lock().unwrap().agent_by_id(1).lock().unwrap().print_w();
     
     println!("start run.");
-    sp0.run(RunMode::ForwardStepping, Time::new::<m_S>(100.0));
+    let now = Instant::now(); // for knowing the simulation time.
+    sp0.run(RunMode::ForwardStepping, Time::new::<m_S>(5.0));
+    println!("Total simulation time: {}", now.elapsed().as_millis());
 
-    pp_syn.lock().unwrap().agent_by_id(0).lock().unwrap().print_w();
-    pp_syn.lock().unwrap().agent_by_id(1).lock().unwrap().print_w();
+    // pp_syn.lock().unwrap().agent_by_id(0).lock().unwrap().print_w();
+    // pp_syn.lock().unwrap().agent_by_id(1).lock().unwrap().print_w();
 }
